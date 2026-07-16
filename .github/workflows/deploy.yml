@@ -1,0 +1,50 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make demo.html the index page
+        run: |
+          # demo.html becomes the landing page, game is at /play/
+          mkdir -p dist/play
+          cp -r src dist/play/src
+          cp index.html dist/play/index.html
+          cp demo.html dist/index.html
+          # Patch play link to use relative path
+          sed -i 's|href="index.html"|href="play/index.html"|g' dist/index.html
+          sed -i 's|href="index.html"|href="./index.html"|g' dist/play/index.html
+          echo "✅ dist/ ready"
+          ls dist/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backrooms — RNA Engine Demo</title>
+  <style>
+    :root {
+      --yellow: #c8a000;
+      --yellow-dim: #7a6000;
+      --bg: #080600;
+      --card: #100d00;
+      --border: #2a2000;
+      --text: #ccaa66;
+      --dim: #665533;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      line-height: 1.6;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 20px;
+      background: radial-gradient(ellipse at center, #1a1200 0%, #080600 70%);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        0deg, transparent, transparent 3px, rgba(255,200,0,0.015) 3px, rgba(255,200,0,0.015) 4px
+      );
+      pointer-events: none;
+    }
+    .hero-title {
+      font-size: clamp(3rem, 10vw, 7rem);
+      font-weight: bold;
+      color: var(--yellow);
+      letter-spacing: 0.12em;
+      text-shadow: 0 0 40px rgba(200,160,0,0.4), 0 0 80px rgba(200,160,0,0.15);
+      animation: flicker 8s infinite;
+    }
+    .hero-subtitle {
+      font-size: clamp(0.9rem, 2.5vw, 1.3rem);
+      color: var(--yellow-dim);
+      letter-spacing: 0.3em;
+      margin-top: 8px;
+      margin-bottom: 48px;
+    }
+    .hero-desc {
+      max-width: 540px;
+      color: var(--dim);
+      font-size: 1rem;
+      margin-bottom: 48px;
+    }
+    .btn-play {
+      display: inline-block;
+      padding: 18px 52px;
+      background: var(--yellow);
+      color: #000;
+      font-family: 'Courier New', monospace;
+      font-size: 1.2rem;
+      font-weight: bold;
+      letter-spacing: 0.15em;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      box-shadow: 0 0 30px rgba(200,160,0,0.3);
+    }
+    .btn-play:hover {
+      background: #ffcc00;
+      transform: scale(1.04);
+      box-shadow: 0 0 50px rgba(255,200,0,0.5);
+    }
+    .btn-play:active { transform: scale(0.98); }
+    .hero-note {
+      margin-top: 20px;
+      font-size: 0.8rem;
+      color: #443322;
+    }
+    @keyframes flicker {
+      0%,100% { opacity: 1; }
+      92% { opacity: 1; }
+      93% { opacity: 0.7; }
+      94% { opacity: 1; }
+      96% { opacity: 0.85; }
+      97% { opacity: 1; }
+    }
+
+    /* ── FEATURES ── */
+    .section {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 80px 24px;
+    }
+    .section-title {
+      font-size: 1.5rem;
+      color: var(--yellow);
+      letter-spacing: 0.2em;
+      margin-bottom: 40px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+    .feature {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 24px;
+    }
+    .feature-icon { font-size: 2rem; margin-bottom: 12px; }
+    .feature-name {
+      color: var(--yellow);
+      font-size: 1rem;
+      margin-bottom: 8px;
+      letter-spacing: 0.1em;
+    }
+    .feature-desc { color: var(--dim); font-size: 0.88rem; }
+
+    /* ── LEVELS ── */
+    .levels {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .level-card {
+      border: 1px solid var(--border);
+      padding: 20px;
+    }
+    .level-card.lvl0 { background: #12100000; border-color: #4a3c00; }
+    .level-card.lvl1 { background: #0a0a0f; border-color: #2a2a3a; }
+    .level-card.lvl2 { background: #08080c; border-color: #1a1a22; }
+    .level-num {
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      color: var(--dim);
+      margin-bottom: 4px;
+    }
+    .level-name { color: var(--yellow); font-size: 1.05rem; margin-bottom: 10px; }
+    .level-desc { font-size: 0.85rem; color: var(--dim); }
+    .level-tag {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border: 1px solid var(--border);
+      color: var(--dim);
+    }
+
+    /* ── CONTROLS ── */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+    }
+    .key {
+      background: #1a1600;
+      border: 1px solid var(--yellow-dim);
+      color: var(--yellow);
+      padding: 4px 10px;
+      font-size: 0.85rem;
+      min-width: 52px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .control-label { color: var(--dim); font-size: 0.88rem; }
+
+    /* ── CTA BOTTOM ── */
+    .cta {
+      text-align: center;
+      padding: 80px 24px;
+      border-top: 1px solid var(--border);
+      background: radial-gradient(ellipse at center, #120e00 0%, #080600 70%);
+    }
+    .cta p { color: var(--dim); margin-bottom: 32px; font-size: 0.95rem; }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: #332200;
+      font-size: 0.8rem;
+      border-top: 1px solid #110d00;
+    }
+    footer a { color: #554400; text-decoration: none; }
+    footer a:hover { color: var(--yellow-dim); }
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-title">BACKROOMS</div>
+    <div class="hero-subtitle">RNA ENGINE</div>
+    <p class="hero-desc">
+      You have noclipped out of reality.<br>
+      Procedurally generated maze. Flickering lights. Flashlight with dying battery.<br>
+      Find the exit — before your sanity runs out.
+    </p>
+    <a class="btn-play" href="index.html">▶ PLAY DEMO</a>
+    <p class="hero-note">Browser game · No install · WASD + Mouse</p>
+  </section>
+
+  <!-- FEATURES -->
+  <div class="section">
+    <div class="section-title">ENGINE FEATURES</div>
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">🔦</div>
+        <div class="feature-name">FLASHLIGHT</div>
+        <div class="feature-desc">Realistic light cone with warm tint. Battery drains over time — flickering starts when low.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🏗️</div>
+        <div class="feature-name">PROCEDURAL GENERATION</div>
+        <div class="feature-desc">BSP-based room & corridor generation. Every run is unique, seeded per level.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">👁️</div>
+        <div class="feature-name">DDA RAYCASTING</div>
+        <div class="feature-desc">Fast and accurate wall rendering with fish-eye correction and distance fog.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🎞️</div>
+        <div class="feature-name">ATMOSPHERE</div>
+        <div class="feature-desc">Lamp flicker, film grain, vignette, head bob, and breath sway for full immersion.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🧠</div>
+        <div class="feature-name">SANITY SYSTEM</div>
+        <div class="feature-desc">Sanity drains the longer you wander. Reach zero — game over.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🗺️</div>
+        <div class="feature-name">MINIMAP</div>
+        <div class="feature-desc">Real-time minimap with player dot and green exit marker.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEVELS -->
+  <div class="section" style="padding-top: 0">
+    <div class="section-title">LEVELS</div>
+    <div class="levels">
+      <div class="level-card lvl0">
+        <div class="level-num">LEVEL 0</div>
+        <div class="level-name">The Lobby</div>
+        <div class="level-desc">Mono-yellow wallpaper. Damp carpet. Fluorescent hum. Open maze of pillars and dead ends.</div>
+        <span class="level-tag">OPEN SPACE</span>
+      </div>
+      <div class="level-card lvl1">
+        <div class="level-num">LEVEL 1</div>
+        <div class="level-name">Fluorescent Hum</div>
+        <div class="level-desc">Concrete warehouse rooms. Flickering tubes. Cardboard boxes in every corner.</div>
+        <span class="level-tag">ROOMS + CORRIDORS</span>
+      </div>
+      <div class="level-card lvl2">
+        <div class="level-num">LEVEL 2</div>
+        <div class="level-name">Pipe Maintenance</div>
+        <div class="level-desc">Dark narrow tunnels. Distant metallic banging. Dripping water. Almost no light.</div>
+        <span class="level-tag">DARK / TIGHT</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="section" style="padding-top: 0">
+    <div class="section-title">CONTROLS</div>
+    <div class="controls-grid">
+      <div class="control-row"><span class="key">W A S D</span><span class="control-label">Move</span></div>
+      <div class="control-row"><span class="key">Mouse</span><span class="control-label">Look around</span></div>
+      <div class="control-row"><span class="key">← →</span><span class="control-label">Turn</span></div>
+      <div class="control-row"><span class="key">F</span><span class="control-label">Toggle flashlight</span></div>
+      <div class="control-row"><span class="key">Click</span><span class="control-label">Lock mouse cursor</span></div>
+      <div class="control-row"><span class="key">ESC</span><span class="control-label">Release cursor</span></div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+    <p>Find the green dot on the minimap. That's your exit.<br>Don't lose your mind.</p>
+    <a class="btn-play" href="index.html">▶ PLAY NOW</a>
+  </div>
+
+  <footer>
+    <p>Backrooms — RNA Engine &nbsp;·&nbsp; <a href="https://github.com/Zenka737/backrooms-rna-engine">GitHub</a></p>
+  </footer>
+
+</body>
+</html>
