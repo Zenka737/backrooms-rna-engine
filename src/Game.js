@@ -1,5 +1,5 @@
 // ============================================================
-// Game.js — главный игровой цикл (исправленная версия)
+// Game.js — главный игровой цикл (финальная версия)
 // ============================================================
 
 import { RNAEngine } from './engine/RNAEngine.js';
@@ -16,7 +16,7 @@ export class Game {
         this.isPaused = false;
         this.currentLevel = 0;
         this.seed = 42;
-        this.mapSize = 40; // Сохраняем размер
+        this.mapSize = 40;
         
         this.map = null;
         this.player = null;
@@ -130,12 +130,10 @@ export class Game {
         const levelInfo = document.getElementById('level-info');
         if (levelInfo) levelInfo.textContent = `Уровень ${levelIndex}: ${levelDef.name}`;
         
-        // ✅ ИСПРАВЛЕНО: правильный вызов конструктора
         this.mapSize = 40 + Math.floor(Math.random() * 20);
         this.map = new GameMap(this.mapSize, this.mapSize);
         this.map.generateBackrooms(this.seed, levelIndex);
         
-        // ✅ ИСПРАВЛЕНО: используем готовый метод
         const spawn = this.map.getSpawnPoint();
         const startX = spawn.x + 0.5;
         const startY = spawn.y + 0.5;
@@ -143,15 +141,7 @@ export class Game {
         this.player = new Player(startX, startY, 0);
         this.player.resetSanity();
         
-        // ✅ ИСПРАВЛЕНО: передаём только canvas
         this.engine = new RNAEngine(this.canvas);
-        
-        // Передаём карту и игрока в движок (если он их хранит)
-        // Для этого может понадобиться метод setMap или setPlayer
-        // Если такого нет, можно добавить в RNAEngine:
-        // this.engine.map = this.map;
-        // this.engine.player = this.player;
-        // Но лучше использовать сеттеры, если они есть
         
         this.updateSanityUI();
         setTimeout(() => this.hideLoading(), 300);
@@ -195,7 +185,6 @@ export class Game {
             this.isMoving = true;
         }
         
-        // ✅ ИСПРАВЛЕНО: используем getCell
         const newX = this.player.x + dx;
         const newY = this.player.y + dy;
         
@@ -210,7 +199,6 @@ export class Game {
         
         this.player.clampPosition(this.mapSize);
         
-        // Поворот
         const rotSpeedKey = 2.5 * (1 / 60);
         if (this.keys['ArrowLeft']) this.player.angle -= rotSpeedKey;
         if (this.keys['ArrowRight']) this.player.angle += rotSpeedKey;
@@ -227,12 +215,11 @@ export class Game {
         this.checkExit();
     }
     
+    // ✅ ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ РЕНДЕРА
     render() {
         if (!this.engine || !this.map || !this.player) return;
-        
-        // ✅ ИСПРАВЛЕНО: передаём только isMoving (или без аргументов)
-        // Предполагаем, что engine уже знает о карте и игроке
-        this.engine.render(this.isMoving);
+        const levelDef = LEVELS[this.currentLevel] || LEVELS[0];
+        this.engine.render(this.map, this.player, levelDef, this.isMoving);
     }
     
     updateSanityUI() {
