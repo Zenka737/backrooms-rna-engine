@@ -211,8 +211,8 @@ export class RNAEngine {
   _getShade(dist, side, level) {
     const maxDist = level.fogDistance || 12;
     let shade = 1 - Math.min(1, dist / maxDist);
-    if (side === 1) shade *= 0.72;
-    return Math.max(0.08, shade);
+    if (side === 1) shade *= 0.78;
+    return Math.max(0.14, shade);
   }
 
   _drawSprites(map, player, level, zbuffer, W, H, horizonShift) {
@@ -229,15 +229,51 @@ export class RNAEngine {
       if (Math.abs(ang) > this.FOV) continue;
       const screenX = Math.floor((0.5 + ang / this.FOV) * W);
       const dist = Math.max(0.5, sp.dist);
-      const sprH = Math.min(H * 2, H / dist);
-      const startX = screenX - sprH / 2;
-      for (let sx = 0; sx < sprH; sx++) {
-        const col = startX + sx;
+      // Монстр выше стены — страшнее
+      const sprH = Math.min(H * 2, H / dist * 1.4);
+      const sprW = sprH * 0.55;
+      const startX = screenX - sprW / 2;
+      const topY = mid - sprH * 0.72; // смещён вверх (голова выше горизонта)
+
+      for (let sx = 0; sx < sprW; sx++) {
+        const col = Math.floor(startX + sx);
         if (col < 0 || col >= W || zbuffer[col] <= dist) continue;
         const flashShade = this._flashlightShade(col, W, dist);
-        const shade = Math.max(0.05, (1 - dist / (level.fogDistance || 12)) * (0.1 + 0.9 * flashShade));
-        ctx.fillStyle = sp.getColor ? sp.getColor(shade) : `rgba(255,255,0,${shade})`;
-        ctx.fillRect(col, mid - sprH / 2, 1, sprH);
+        const shade = Math.max(0.05, (1 - dist / (level.fogDistance || 12)) * (0.15 + 0.85 * flashShade));
+        const u = sx / sprW; // позиция по ширине спрайта 0..1
+
+        for (let sy = 0; sy < sprH; sy++) {
+          const v = sy / sprH; // позиция по высоте 0..1
+          const py = Math.floor(topY + sy);
+          if (py < 0 || py >= H) continue;
+
+          // Силуэт монстра: узкий снизу, шире в плечах, круглая голова
+          const bodyFactor = v < 0.18
+            ? (1 - Math.pow((u - 0.5) * 3.5, 2))   // голова
+            : v < 0.55
+            ? (1 - Math.pow((u - 0.5) * 1.8, 2))   // торс широкий
+            : (1 - Math.pow((u - 0.5) * 2.8, 2));  // ноги
+
+          if (bodyFactor < 0) continue;
+
+          // Цвет: красное тело с тёмными прожилками
+          const stripe = Math.sin(v * 18) > 0.6 ? 0.55 : 1.0;
+          const glow = v < 0.2 ? 0.8 + Math.sin(Date.now() * 0.005) * 0.2 : 1.0; // глаза светятся
+          const r = Math.floor(200 * shade * stripe * glow);
+          const g = Math.floor(8 * shade * stripe);
+          const b = Math.floor(8 * shade * stripe);
+          ctx.fillStyle = `rgb(${r},${g},${b})`;
+          ctx.fillRect(col, py, 1, 1);
+        }
+      }
+
+      // Светящиеся глаза (два ярких пятна)
+      if (dist < 10) {
+        const eyeY = Math.floor(topY + sprH * 0.12);
+        const eyeAlpha = Math.min(0.9, (1 - dist / 10) * this.flickerIntensity);
+        ctx.fillStyle = `rgba(255,80,0,${eyeAlpha})`;
+        ctx.fillRect(Math.floor(screenX - sprW * 0.15), eyeY, 2, 2);
+        ctx.fillRect(Math.floor(screenX + sprW * 0.08), eyeY, 2, 2);
       }
     }
   }
@@ -248,7 +284,7 @@ export class RNAEngine {
     const cx = W / 2, cy = H / 2;
 
     // Ambient darkness layer
-    ctx.fillStyle = 'rgba(0,0,0,0.40)';
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.fillRect(0, 0, W, H);
 
     // Flashlight cone — cut out the darkness

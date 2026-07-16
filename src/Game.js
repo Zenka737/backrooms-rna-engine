@@ -18,6 +18,8 @@ export class Game {
         this.currentLevel = 0;
         this.seed = 42;
         this.mapSize = 40;
+        this.difficulty = null; // 'easy' | 'medium' | 'hard'
+        this.menuSelection = 1; // 0=easy,1=medium,2=hard
         
         this.map = null;
         this.player = null;
@@ -113,10 +115,74 @@ export class Game {
     }
     
     start() {
-        if (this.isRunning) return;
-        this.showLoading();
+        this._showMenu();
+    }
+
+    _showMenu() {
+        this.isRunning = false;
+        const ctx = this.canvas.getContext('2d');
+        const W = this.canvas.width, H = this.canvas.height;
+        const difficulties = ['ЛЕГКО', 'СРЕДНЕ', 'СЛОЖНО'];
+        const colors = ['#44cc44', '#ccaa22', '#cc2222'];
+
+        const draw = () => {
+            if (this.isRunning) return;
+            ctx.fillStyle = '#050400';
+            ctx.fillRect(0, 0, W, H);
+
+            // Заголовок
+            ctx.fillStyle = '#c8a000';
+            ctx.font = `bold ${Math.min(72, W * 0.09)}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.fillText('BACKROOMS', W / 2, H * 0.22);
+
+            ctx.fillStyle = '#554422';
+            ctx.font = `${Math.min(18, W * 0.022)}px monospace`;
+            ctx.fillText('RNA ENGINE  v3', W / 2, H * 0.30);
+
+            ctx.fillStyle = '#665533';
+            ctx.font = `${Math.min(14, W * 0.016)}px monospace`;
+            ctx.fillText('Вы выпали из реальности. Найдите выход.', W / 2, H * 0.40);
+
+            // Выбор сложности
+            ctx.font = `${Math.min(15, W * 0.018)}px monospace`;
+            ctx.fillStyle = '#aaaaaa';
+            ctx.fillText('ВЫБЕРИТЕ СЛОЖНОСТЬ', W / 2, H * 0.52);
+
+            difficulties.forEach((d, i) => {
+                const selected = i === this.menuSelection;
+                ctx.fillStyle = selected ? colors[i] : '#333322';
+                ctx.fillRect(W / 2 - 120, H * 0.57 + i * 54 - 28, 240, 44);
+                ctx.fillStyle = selected ? '#000' : '#666644';
+                ctx.font = `${selected ? 'bold ' : ''}${Math.min(18, W * 0.02)}px monospace`;
+                ctx.fillText(d, W / 2, H * 0.57 + i * 54);
+            });
+
+            ctx.fillStyle = '#555544';
+            ctx.font = `${Math.min(12, W * 0.014)}px monospace`;
+            ctx.fillText('↑↓ — выбор   Enter — начать', W / 2, H * 0.87);
+            ctx.textAlign = 'left';
+
+            requestAnimationFrame(draw);
+        };
+        draw();
+
+        const onKey = (e) => {
+            if (e.code === 'ArrowUp') this.menuSelection = (this.menuSelection + 2) % 3;
+            if (e.code === 'ArrowDown') this.menuSelection = (this.menuSelection + 1) % 3;
+            if (e.code === 'Enter') {
+                document.removeEventListener('keydown', onKey);
+                this.difficulty = ['easy', 'medium', 'hard'][this.menuSelection];
+                this._startGame();
+            }
+        };
+        document.addEventListener('keydown', onKey);
+    }
+
+    _startGame() {
         this.isRunning = true;
-        this.loadLevel(this.currentLevel);
+        this.showLoading();
+        this.loadLevel(0);
         this.gameLoop();
         setTimeout(() => this.hideLoading(), 500);
     }
@@ -147,16 +213,21 @@ export class Game {
 
         this.engine = new RNAEngine(this.canvas);
 
-        // Спавн монстров
+        // Спавн монстров в зависимости от сложности
         this.monsters = [];
-        const monsterCount = levelDef.monsterCount || 0;
+        const baseCount = levelDef.monsterCount || 0;
+        const diffMult = { easy: 0, medium: 1, hard: 2 }[this.difficulty] ?? 1;
+        const monsterCount = Math.round(baseCount * (diffMult === 0 ? 0 : diffMult === 1 ? 1 : 1.8));
+        const monsterSpeed = { easy: 0, medium: 0.016, hard: 0.028 }[this.difficulty] ?? 0.016;
         let spawned = 0;
         for (let attempt = 0; spawned < monsterCount && attempt < 500; attempt++) {
             const mx = 1 + Math.floor(Math.random() * (this.mapSize - 2));
             const my = 1 + Math.floor(Math.random() * (this.mapSize - 2));
             const dx = mx - startX, dy = my - startY;
             if (this.map.getCell(mx, my) === 0 && dx*dx + dy*dy > 25) {
-                this.monsters.push(new Monster(mx + 0.5, my + 0.5));
+                const m = new Monster(mx + 0.5, my + 0.5);
+                m.speed = monsterSpeed;
+                this.monsters.push(m);
                 spawned++;
             }
         }
@@ -286,9 +357,7 @@ export class Game {
         const restart = (e) => {
             if (e.code === 'Enter') {
                 document.removeEventListener('keydown', restart);
-                this.isRunning = true;
-                this.loadLevel(0);
-                this.gameLoop();
+                this._showMenu();
             }
         };
         document.addEventListener('keydown', restart);
