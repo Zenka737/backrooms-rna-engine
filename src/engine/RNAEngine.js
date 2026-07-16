@@ -247,7 +247,7 @@ export class RNAEngine {
     const cx = W / 2, cy = H / 2;
 
     // Ambient darkness layer
-    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    ctx.fillStyle = 'rgba(0,0,0,0.40)';
     ctx.fillRect(0, 0, W, H);
 
     // Flashlight cone — cut out the darkness

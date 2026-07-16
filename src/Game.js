@@ -85,16 +85,15 @@ export class Game {
         });
         
         document.addEventListener('keydown', (e) => {
-            this.keys[e.key] = true;
-            if (e.key === 'F12') { e.preventDefault(); this.toggleFPS(); }
-            if (e.key === 'Escape') {
+            this.keys[e.code] = true;
+            if (e.code === 'F12') { e.preventDefault(); this.toggleFPS(); }
+            if (e.code === 'Escape') {
                 if (this.isLocked) document.exitPointerLock();
                 this.isPaused = !this.isPaused;
             }
-            if (e.key === 'Enter' && !this.isRunning) this.startGame();
         });
-        
-        document.addEventListener('keyup', (e) => { this.keys[e.key] = false; });
+
+        document.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
         
         document.addEventListener('mousemove', (e) => {
             if (this.isLocked) {
@@ -164,22 +163,22 @@ export class Game {
         let dx = 0, dy = 0;
         this.isMoving = false;
         
-        if (this.keys['w'] || this.keys['W'] || this.keys['ArrowUp']) {
+        if (this.keys['KeyW'] || this.keys['ArrowUp']) {
             dx += Math.cos(this.player.angle) * speed;
             dy += Math.sin(this.player.angle) * speed;
             this.isMoving = true;
         }
-        if (this.keys['s'] || this.keys['S'] || this.keys['ArrowDown']) {
+        if (this.keys['KeyS'] || this.keys['ArrowDown']) {
             dx -= Math.cos(this.player.angle) * speed;
             dy -= Math.sin(this.player.angle) * speed;
             this.isMoving = true;
         }
-        if (this.keys['a'] || this.keys['A']) {
+        if (this.keys['KeyA']) {
             dx += Math.cos(this.player.angle - Math.PI/2) * speed;
             dy += Math.sin(this.player.angle - Math.PI/2) * speed;
             this.isMoving = true;
         }
-        if (this.keys['d'] || this.keys['D']) {
+        if (this.keys['KeyD']) {
             dx += Math.cos(this.player.angle + Math.PI/2) * speed;
             dy += Math.sin(this.player.angle + Math.PI/2) * speed;
             this.isMoving = true;
@@ -202,6 +201,8 @@ export class Game {
         const rotSpeedKey = 2.5 * (1 / 60);
         if (this.keys['ArrowLeft']) this.player.angle -= rotSpeedKey;
         if (this.keys['ArrowRight']) this.player.angle += rotSpeedKey;
+        if (this.keys['KeyQ']) this.player.angle -= rotSpeedKey;
+        if (this.keys['KeyE']) this.player.angle += rotSpeedKey;
         
         if (this.isLocked) {
             const mouseSensitivity = 0.003;
