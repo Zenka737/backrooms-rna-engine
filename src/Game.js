@@ -137,6 +137,9 @@ export class Game {
         const spawn = this.map.getSpawnPoint();
         const startX = spawn.x + 0.5;
         const startY = spawn.y + 0.5;
+
+        const exit = this.map.getExitPoint();
+        this.exitPoint = exit ? { x: exit.x + 0.5, y: exit.y + 0.5 } : null;
         
         this.player = new Player(startX, startY, 0);
         this.player.resetSanity();
@@ -313,15 +316,21 @@ export class Game {
             }
         }
 
-        // Монстры
-        if (this.monsters) {
+        // Выход (зелёная точка)
+        if (this.exitPoint) {
+            ctx.fillStyle = '#00ff88';
+            ctx.fillRect(ox + this.exitPoint.x * scale - 2, oy + this.exitPoint.y * scale - 2, 4, 4);
+        }
+
+        // Монстры (красные точки — только живые)
+        if (this.monsters && this.monsters.length > 0) {
             ctx.fillStyle = '#ff2222';
             for (const m of this.monsters) {
                 if (m.alive) ctx.fillRect(ox + m.x * scale - 1, oy + m.y * scale - 1, 3, 3);
             }
         }
 
-        // Игрок
+        // Игрок (жёлтая точка)
         ctx.fillStyle = '#ffcc00';
         ctx.fillRect(ox + this.player.x * scale - 2, oy + this.player.y * scale - 2, 4, 4);
 
@@ -349,13 +358,10 @@ export class Game {
     }
     
     checkExit() {
-        if (!this.player || !this.map) return;
-        const exit = this.map.getExitPoint();
-        if (!exit) return;
-        
+        if (!this.player || !this.exitPoint) return;
         const dist = Math.sqrt(
-            Math.pow(this.player.x - exit.x, 2) +
-            Math.pow(this.player.y - exit.y, 2)
+            Math.pow(this.player.x - this.exitPoint.x, 2) +
+            Math.pow(this.player.y - this.exitPoint.y, 2)
         );
         if (dist < 0.8) this.nextLevel();
     }
