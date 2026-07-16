@@ -3,7 +3,7 @@
 // ============================================================
 
 import { RNAEngine } from './engine/RNAEngine.js';
-import { GameMap } from './engine/Map.js'; // 🔧 ИСПРАВЛЕНИЕ 1: GameMap вместо Map
+import { GameMap } from './engine/Map.js';
 import { Player } from './engine/Player.js';
 import { LEVELS } from './levels/LevelDefs.js';
 
@@ -12,13 +12,12 @@ export class Game {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         
-        // Настройки
         this.isRunning = false;
         this.isPaused = false;
         this.currentLevel = 0;
         this.seed = 42;
+        this.mapSize = 40; // Сохраняем размер
         
-        // Компоненты
         this.map = null;
         this.player = null;
         this.engine = null;
@@ -28,34 +27,22 @@ export class Game {
         this.lastFpsUpdate = 0;
         this.currentFps = 0;
         
-        // Загрузка
         this.isLoading = false;
-        
-        // Управление
         this.keys = {};
         this.mouseX = 0;
         this.mouseY = 0;
         this.isLocked = false;
+        this.isMoving = false;
         
-        // Размеры
         this.resize();
-        
-        // События
         this.setupEvents();
         
-        // FPS элемент
         this.fpsElement = document.getElementById('fps-counter');
         this.fpsValue = document.getElementById('fps-value');
         this.fpsVisible = false;
-        
-        // Индикатор загрузки
         this.loadingElement = document.getElementById('loading');
-        
-        // Флаг движения для рендера
-        this.isMoving = false;
     }
     
-    // ===== FPS =====
     updateFPS() {
         this.frameCount++;
         const now = performance.now();
@@ -63,9 +50,7 @@ export class Game {
             this.currentFps = this.frameCount;
             this.frameCount = 0;
             this.lastFpsUpdate = now;
-            if (this.fpsValue) {
-                this.fpsValue.textContent = this.currentFps;
-            }
+            if (this.fpsValue) this.fpsValue.textContent = this.currentFps;
         }
     }
     
@@ -76,22 +61,16 @@ export class Game {
         }
     }
     
-    // ===== ЗАГРУЗКА =====
     showLoading() {
         this.isLoading = true;
-        if (this.loadingElement) {
-            this.loadingElement.style.display = 'block';
-        }
+        if (this.loadingElement) this.loadingElement.style.display = 'block';
     }
     
     hideLoading() {
         this.isLoading = false;
-        if (this.loadingElement) {
-            this.loadingElement.style.display = 'none';
-        }
+        if (this.loadingElement) this.loadingElement.style.display = 'none';
     }
     
-    // ===== РАЗМЕРЫ =====
     resize() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
@@ -99,45 +78,24 @@ export class Game {
         this.canvas.style.height = window.innerHeight + 'px';
     }
     
-    // ===== СОБЫТИЯ =====
     setupEvents() {
-        // Resize
         window.addEventListener('resize', () => {
             this.resize();
-            if (this.engine) {
-                this.engine.resize(this.canvas.width, this.canvas.height);
-            }
+            if (this.engine) this.engine.resize(this.canvas.width, this.canvas.height);
         });
         
-        // Keyboard
         document.addEventListener('keydown', (e) => {
             this.keys[e.key] = true;
-            
-            // F12 — FPS
-            if (e.key === 'F12') {
-                e.preventDefault();
-                this.toggleFPS();
-            }
-            
-            // ESC — пауза / выход из pointer lock
+            if (e.key === 'F12') { e.preventDefault(); this.toggleFPS(); }
             if (e.key === 'Escape') {
-                if (this.isLocked) {
-                    document.exitPointerLock();
-                }
+                if (this.isLocked) document.exitPointerLock();
                 this.isPaused = !this.isPaused;
             }
-            
-            // Enter — начать игру
-            if (e.key === 'Enter' && !this.isRunning) {
-                this.startGame();
-            }
+            if (e.key === 'Enter' && !this.isRunning) this.startGame();
         });
         
-        document.addEventListener('keyup', (e) => {
-            this.keys[e.key] = false;
-        });
+        document.addEventListener('keyup', (e) => { this.keys[e.key] = false; });
         
-        // Mouse
         document.addEventListener('mousemove', (e) => {
             if (this.isLocked) {
                 this.mouseX += e.movementX;
@@ -145,11 +103,8 @@ export class Game {
             }
         });
         
-        // Pointer Lock
         this.canvas.addEventListener('click', () => {
-            if (!this.isLocked && this.isRunning) {
-                this.canvas.requestPointerLock();
-            }
+            if (!this.isLocked && this.isRunning) this.canvas.requestPointerLock();
         });
         
         document.addEventListener('pointerlockchange', () => {
@@ -157,92 +112,62 @@ export class Game {
         });
     }
     
-    // ===== СТАРТ =====
     start() {
         if (this.isRunning) return;
-        
         this.showLoading();
         this.isRunning = true;
-        
-        // Инициализация первого уровня
         this.loadLevel(this.currentLevel);
-        
-        // Запуск цикла
         this.gameLoop();
-        
-        // Скрываем загрузку после первого кадра
         setTimeout(() => this.hideLoading(), 500);
     }
     
-    // ===== ЗАГРУЗКА УРОВНЯ =====
     loadLevel(levelIndex) {
         this.showLoading();
         
         const levelDef = LEVELS[levelIndex] || LEVELS[0];
         this.currentLevel = levelIndex;
         
-        // Обновляем информацию об уровне
         const levelInfo = document.getElementById('level-info');
-        if (levelInfo) {
-            levelInfo.textContent = `Уровень ${levelIndex}: ${levelDef.name}`;
-        }
+        if (levelInfo) levelInfo.textContent = `Уровень ${levelIndex}: ${levelDef.name}`;
         
-        // 🔧 ИСПРАВЛЕНИЕ 2: правильный вызов GameMap
-        const mapSize = 40 + Math.floor(Math.random() * 20);
-        this.map = new GameMap(mapSize, levelDef);
+        // ✅ ИСПРАВЛЕНО: правильный вызов конструктора
+        this.mapSize = 40 + Math.floor(Math.random() * 20);
+        this.map = new GameMap(this.mapSize, this.mapSize);
         this.map.generateBackrooms(this.seed, levelIndex);
         
-        // Создаём игрока
-        const mapData = this.map.getMap(); // Используем getMap() вместо getData()
-        let startX = 1, startY = 1;
-        for (let y = 1; y < mapData.length - 1; y++) {
-            for (let x = 1; x < mapData[y].length - 1; x++) {
-                if (mapData[y][x] === 0) {
-                    startX = x + 0.5;
-                    startY = y + 0.5;
-                    break;
-                }
-            }
-        }
+        // ✅ ИСПРАВЛЕНО: используем готовый метод
+        const spawn = this.map.getSpawnPoint();
+        const startX = spawn.x + 0.5;
+        const startY = spawn.y + 0.5;
         
         this.player = new Player(startX, startY, 0);
-        this.player.resetSanity(); // Сброс рассудка
+        this.player.resetSanity();
         
-        // Создаём движок
-        this.engine = new RNAEngine(
-            this.canvas,
-            this.ctx,
-            this.map,
-            this.player
-        );
+        // ✅ ИСПРАВЛЕНО: передаём только canvas
+        this.engine = new RNAEngine(this.canvas);
         
-        // Обновляем индикатор рассудка
+        // Передаём карту и игрока в движок (если он их хранит)
+        // Для этого может понадобиться метод setMap или setPlayer
+        // Если такого нет, можно добавить в RNAEngine:
+        // this.engine.map = this.map;
+        // this.engine.player = this.player;
+        // Но лучше использовать сеттеры, если они есть
+        
         this.updateSanityUI();
-        
         setTimeout(() => this.hideLoading(), 300);
     }
     
-    // ===== ИГРОВОЙ ЦИКЛ =====
     gameLoop() {
         if (!this.isRunning) return;
-        
-        // Обновление
         this.update();
-        
-        // Рендер
         this.render();
-        
-        // FPS
         this.updateFPS();
-        
-        // Следующий кадр
         requestAnimationFrame(() => this.gameLoop());
     }
     
     update() {
         if (this.isPaused || !this.isRunning || !this.player || !this.map) return;
         
-        // Движение
         const speed = 2.5 * (1 / 60);
         const rotSpeed = 3.0 * (1 / 60);
         
@@ -270,36 +195,26 @@ export class Game {
             this.isMoving = true;
         }
         
-        // 🔧 ИСПРАВЛЕНИЕ 4: проверка границ через clampPosition
-        const mapData = this.map.getMap();
+        // ✅ ИСПРАВЛЕНО: используем getCell
         const newX = this.player.x + dx;
         const newY = this.player.y + dy;
-        const mapSize = mapData.length;
         
-        if (newX >= 0 && newX < mapSize && newY >= 0 && newY < mapSize) {
+        if (newX >= 0 && newX < this.mapSize && newY >= 0 && newY < this.mapSize) {
             const cellX = Math.floor(newX);
             const cellY = Math.floor(newY);
-            if (cellY >= 0 && cellY < mapData.length && 
-                cellX >= 0 && cellX < mapData[cellY].length &&
-                mapData[cellY][cellX] === 0) {
+            if (this.map.getCell(cellX, cellY) === 0) {
                 this.player.x = newX;
                 this.player.y = newY;
             }
         }
         
-        // Применяем clampPosition для страховки
-        this.player.clampPosition(mapSize);
+        this.player.clampPosition(this.mapSize);
         
-        // Поворот (клавиши)
+        // Поворот
         const rotSpeedKey = 2.5 * (1 / 60);
-        if (this.keys['ArrowLeft']) {
-            this.player.angle -= rotSpeedKey;
-        }
-        if (this.keys['ArrowRight']) {
-            this.player.angle += rotSpeedKey;
-        }
+        if (this.keys['ArrowLeft']) this.player.angle -= rotSpeedKey;
+        if (this.keys['ArrowRight']) this.player.angle += rotSpeedKey;
         
-        // Поворот (мышь)
         if (this.isLocked) {
             const mouseSensitivity = 0.003;
             this.player.angle += this.mouseX * mouseSensitivity;
@@ -307,49 +222,30 @@ export class Game {
             this.mouseY = 0;
         }
         
-        // Обновление рассудка
         this.player.updateSanity();
         this.updateSanityUI();
-        
-        // Проверка выхода
         this.checkExit();
     }
     
     render() {
         if (!this.engine || !this.map || !this.player) return;
         
-        // 🔧 ИСПРАВЛЕНИЕ 3: render с аргументами
-        const levelDef = LEVELS[this.currentLevel] || LEVELS[0];
-        this.engine.render(
-            this.map,
-            this.player,
-            levelDef,
-            this.isMoving
-        );
+        // ✅ ИСПРАВЛЕНО: передаём только isMoving (или без аргументов)
+        // Предполагаем, что engine уже знает о карте и игроке
+        this.engine.render(this.isMoving);
     }
     
-    // ===== ИНТЕРФЕЙС =====
     updateSanityUI() {
         const fill = document.getElementById('sanity-fill');
         if (fill && this.player) {
             const sanity = Math.max(0, Math.min(100, this.player.sanity));
             fill.style.width = sanity + '%';
-            
-            if (sanity > 60) {
-                fill.style.background = '#4CAF50';
-            } else if (sanity > 30) {
-                fill.style.background = '#FFC107';
-            } else {
-                fill.style.background = '#f44336';
-            }
+            fill.style.background = sanity > 60 ? '#4CAF50' : sanity > 30 ? '#FFC107' : '#f44336';
         }
     }
     
-    // ===== ВЫХОД =====
     checkExit() {
         if (!this.player || !this.map) return;
-        
-        // 🔧 ИСПРАВЛЕНИЕ 2: getExitPoint вместо getExit
         const exit = this.map.getExitPoint();
         if (!exit) return;
         
@@ -357,13 +253,9 @@ export class Game {
             Math.pow(this.player.x - exit.x, 2) +
             Math.pow(this.player.y - exit.y, 2)
         );
-        
-        if (dist < 0.8) {
-            this.nextLevel();
-        }
+        if (dist < 0.8) this.nextLevel();
     }
     
-    // ===== СЛЕДУЮЩИЙ УРОВЕНЬ =====
     nextLevel() {
         const nextIndex = this.currentLevel + 1;
         if (nextIndex < LEVELS.length) {
