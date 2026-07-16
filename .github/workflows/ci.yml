@@ -1,0 +1,154 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  # ── 1. Структура файлов ─────────────────────────────────────────────────────
+  structure:
+    name: File Structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check required files
+        run: |
+          REQUIRED=(
+            "index.html"
+            "src/Game.js"
+            "src/engine/RNAEngine.js"
+            "src/engine/Map.js"
+            "src/engine/Player.js"
+            "src/levels/LevelDefs.js"
+            ".github/workflows/ci.yml"
+            ".github/workflows/deploy.yml"
+          )
+          FAIL=0
+          for f in "${REQUIRED[@]}"; do
+            if [ -f "$f" ]; then echo "✅ $f"
+            else echo "❌ MISSING: $f"; FAIL=1; fi
+          done
+          exit $FAIL
+
+  # ── 2. JS синтаксис ─────────────────────────────────────────────────────────
+  syntax:
+    name: JS Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check syntax with node --check
+        run: |
+          FAIL=0
+          for f in src/engine/RNAEngine.js src/engine/Map.js src/engine/Player.js src/levels/LevelDefs.js src/Game.js; do
+            if node --check "$f" 2>&1; then echo "✅ $f OK"
+            else echo "❌ $f FAILED"; FAIL=1; fi
+          done
+          exit $FAIL
+
+  # ── 3. ES-модули ────────────────────────────────────────────────────────────
+  modules:
+    name: ES Module Imports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify export/import consistency
+        run: |
+          node - <<'EOF'
+          import { readFileSync, readdirSync } from 'fs';
+          import { join } from 'path';
+
+          const files = [
+            'src/Game.js',
+            'src/engine/RNAEngine.js',
+            'src/engine/Map.js',
+            'src/engine/Player.js',
+            'src/levels/LevelDefs.js',
+          ];
+
+          let fail = false;
+
+          // Check each file has at least one export
+          for (const f of files) {
+            const src = readFileSync(f, 'utf8');
+            if (!src.includes('export')) {
+              console.error(`❌ No export found in ${f}`);
+              fail = true;
+            } else {
+              console.log(`✅ export found in ${f}`);
+            }
+          }
+
+          // Check Game.js imports all engine modules
+          const game = readFileSync('src/Game.js', 'utf8');
+          const needed = ['RNAEngine', 'GameMap', 'Player', 'getLevelDef'];
+          for (const sym of needed) {
+            if (game.includes(sym)) console.log(`✅ Game.js uses ${sym}`);
+            else { console.error(`❌ Game.js missing ${sym}`); fail = true; }
+          }
+
+          if (fail) process.exit(1);
+          EOF
+
+  # ── 4. HTML валидация ───────────────────────────────────────────────────────
+  html:
+    name: HTML Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate index.html
+        run: |
+          FAIL=0
+          html=$(cat index.html)
+          checks=(
+            "canvas"
+            "Game.js"
+            "type=\"module\""
+            "<title>"
+          )
+          for pattern in "${checks[@]}"; do
+            if echo "$html" | grep -q "$pattern"; then echo "✅ Found: $pattern"
+            else echo "❌ Missing: $pattern"; FAIL=1; fi
+          done
+          exit $FAIL
+
+  # ── 5. Размер бандла ────────────────────────────────────────────────────────
+  size:
+    name: Bundle Size Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check file sizes
+        run: |
+          FAIL=0
+          MAX_KB=100
+          for f in src/engine/RNAEngine.js src/engine/Map.js src/engine/Player.js src/levels/LevelDefs.js src/Game.js; do
+            size=$(wc -c < "$f")
+            kb=$((size / 1024))
+            if [ $kb -gt $MAX_KB ]; then
+              echo "❌ $f is ${kb}KB (limit ${MAX_KB}KB)"; FAIL=1
+            else
+              echo "✅ $f — ${size} bytes"
+            fi
+          done
+          exit $FAIL
+
+  # ── 6. Итог ─────────────────────────────────────────────────────────────────
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [structure, syntax, modules, html, size]
+    if: always()
+    steps:
+      - name: Print result
+        run: |
+          echo "=============================="
+          echo "  Backrooms RNA Engine CI"
+          echo "=============================="
+          echo "All checks completed."
