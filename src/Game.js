@@ -5,6 +5,7 @@
 import { RNAEngine } from './engine/RNAEngine.js';
 import { GameMap } from './engine/Map.js';
 import { Player } from './engine/Player.js';
+import { Monster } from './engine/Monster.js';
 import { LEVELS } from './levels/LevelDefs.js';
 
 export class Game {
@@ -139,9 +140,38 @@ export class Game {
         
         this.player = new Player(startX, startY, 0);
         this.player.resetSanity();
-        
+        this.player.resetHearts();
+
         this.engine = new RNAEngine(this.canvas);
-        
+
+        // Спавн монстров
+        this.monsters = [];
+        const monsterCount = levelDef.monsterCount || 0;
+        let spawned = 0;
+        for (let attempt = 0; spawned < monsterCount && attempt < 500; attempt++) {
+            const mx = 1 + Math.floor(Math.random() * (this.mapSize - 2));
+            const my = 1 + Math.floor(Math.random() * (this.mapSize - 2));
+            const dx = mx - startX, dy = my - startY;
+            if (this.map.getCell(mx, my) === 0 && dx*dx + dy*dy > 25) {
+                this.monsters.push(new Monster(mx + 0.5, my + 0.5));
+                spawned++;
+            }
+        }
+
+        // Расстановка ламп на потолке в свободных клетках
+        levelDef.lights = [];
+        const interval = levelDef.lightInterval || 6;
+        for (let y = 0; y < this.mapSize; y += interval) {
+            for (let x = 0; x < this.mapSize; x += interval) {
+                if (this.map.getCell(x, y) === 0) {
+                    levelDef.lights.push({ x: x + 0.5, y: y + 0.5 });
+                }
+            }
+        }
+
+        // Передаём монстров в level.entities для рендера спрайтов
+        levelDef.entities = this.monsters.filter(m => m.alive);
+
         this.updateSanityUI();
         setTimeout(() => this.hideLoading(), 300);
     }
@@ -212,8 +242,53 @@ export class Game {
         }
         
         this.player.updateSanity();
+        if (this.player.invincible > 0) this.player.invincible--;
+
+        // Обновление монстров
+        if (this.monsters) {
+            const levelDef = LEVELS[this.currentLevel] || LEVELS[0];
+            for (const monster of this.monsters) {
+                const hit = monster.update(this.player, this.map);
+                if (hit) this.player.takeDamage();
+            }
+            // Синхронизируем живых монстров в entities для рендера
+            levelDef.entities = this.monsters.filter(m => m.alive);
+        }
+
+        // Смерть игрока
+        if (!this.player.isAlive()) {
+            this._onPlayerDead();
+            return;
+        }
+
         this.updateSanityUI();
         this.checkExit();
+    }
+
+    _onPlayerDead() {
+        this.isRunning = false;
+        const ctx = this.canvas.getContext('2d');
+        const W = this.canvas.width, H = this.canvas.height;
+        ctx.fillStyle = 'rgba(0,0,0,0.85)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#cc2222';
+        ctx.font = `bold ${Math.floor(H * 0.07)}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText('ВЫ ПОГИБЛИ', W / 2, H * 0.42);
+        ctx.fillStyle = '#884444';
+        ctx.font = `${Math.floor(H * 0.025)}px monospace`;
+        ctx.fillText('Нажмите Enter чтобы начать заново', W / 2, H * 0.56);
+        ctx.textAlign = 'left';
+
+        const restart = (e) => {
+            if (e.code === 'Enter') {
+                document.removeEventListener('keydown', restart);
+                this.isRunning = true;
+                this.loadLevel(0);
+                this.gameLoop();
+            }
+        };
+        document.addEventListener('keydown', restart);
     }
     
     // ✅ ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ РЕНДЕРА

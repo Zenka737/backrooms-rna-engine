@@ -1,7 +1,3 @@
-// ============================================================
-// Player.js — игрок с рассудком и коллизиями
-// ============================================================
-
 export class Player {
     constructor(x, y, angle) {
         this.x = x;
@@ -9,9 +5,13 @@ export class Player {
         this.angle = angle || 0;
         this.sanity = 100;
         this.sanityTimer = 0;
-        this.sanityDrainRate = 0.05; // Потеря рассудка в секунду
+        this.sanityDrainRate = 0.05;
+
+        this.hearts = 3;
+        this.maxHearts = 3;
+        this.invincible = 0; // кадры неуязвимости после удара
     }
-    
+
     updateSanity() {
         this.sanityTimer += 1 / 60;
         if (this.sanityTimer >= 1) {
@@ -19,19 +19,27 @@ export class Player {
             this.sanity = Math.max(0, this.sanity - this.sanityDrainRate);
         }
     }
-    
-    // Проверка, жив ли игрок
-    isAlive() {
-        return this.sanity > 0;
+
+    takeDamage() {
+        if (this.invincible > 0) return;
+        this.hearts = Math.max(0, this.hearts - 1);
+        this.invincible = 120; // 2 секунды при 60fps
     }
-    
-    // Сброс рассудка
+
+    isAlive() {
+        return this.hearts > 0;
+    }
+
     resetSanity() {
         this.sanity = 100;
         this.sanityTimer = 0;
     }
-    
-    // 🔧 НОВОЕ: проверка границ
+
+    resetHearts() {
+        this.hearts = this.maxHearts;
+        this.invincible = 0;
+    }
+
     clampPosition(mapSize) {
         const margin = 0.5;
         if (this.x < margin) this.x = margin;
