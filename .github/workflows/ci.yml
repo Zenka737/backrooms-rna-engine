@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Syntax & Structure Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check JS syntax (node --check)
+        run: |
+          for f in src/engine/RNAEngine.js src/engine/Map.js src/engine/Player.js src/levels/LevelDefs.js; do
+            echo "Checking $f..."
+            node --input-type=module < "$f" 2>/dev/null || node --check "$f"
+          done
+          echo "All files passed syntax check."
+
+      - name: Check required files exist
+        run: |
+          files=("index.html" "src/Game.js" "src/engine/RNAEngine.js" "src/engine/Map.js" "src/engine/Player.js" "src/levels/LevelDefs.js")
+          for f in "${files[@]}"; do
+            if [ ! -f "$f" ]; then echo "MISSING: $f" && exit 1; fi
+            echo "OK: $f"
+          done
+
+      - name: Check index.html references Game.js
+        run: |
+          grep -q "Game.js" index.html && echo "OK: index.html imports Game.js" || (echo "FAIL: Game.js not referenced in index.html" && exit 1)
