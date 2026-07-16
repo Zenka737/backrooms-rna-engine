@@ -1,9 +1,9 @@
 // ============================================================
-// Game.js — главный игровой цикл
+// Game.js — главный игровой цикл (исправленная версия)
 // ============================================================
 
 import { RNAEngine } from './engine/RNAEngine.js';
-import { Map } from './engine/Map.js';
+import { GameMap } from './engine/Map.js'; // 🔧 ИСПРАВЛЕНИЕ 1: GameMap вместо Map
 import { Player } from './engine/Player.js';
 import { LEVELS } from './levels/LevelDefs.js';
 
@@ -16,6 +16,7 @@ export class Game {
         this.isRunning = false;
         this.isPaused = false;
         this.currentLevel = 0;
+        this.seed = 42;
         
         // Компоненты
         this.map = null;
@@ -49,6 +50,9 @@ export class Game {
         
         // Индикатор загрузки
         this.loadingElement = document.getElementById('loading');
+        
+        // Флаг движения для рендера
+        this.isMoving = false;
     }
     
     // ===== FPS =====
@@ -183,13 +187,13 @@ export class Game {
             levelInfo.textContent = `Уровень ${levelIndex}: ${levelDef.name}`;
         }
         
-        // Создаём карту
+        // 🔧 ИСПРАВЛЕНИЕ 2: правильный вызов GameMap
         const mapSize = 40 + Math.floor(Math.random() * 20);
-        this.map = new Map(mapSize, levelDef);
-        this.map.generate();
+        this.map = new GameMap(mapSize, levelDef);
+        this.map.generateBackrooms(this.seed, levelIndex);
         
-        // Создаём игрока (с проверкой границ)
-        const mapData = this.map.getData();
+        // Создаём игрока
+        const mapData = this.map.getMap(); // Используем getMap() вместо getData()
         let startX = 1, startY = 1;
         for (let y = 1; y < mapData.length - 1; y++) {
             for (let x = 1; x < mapData[y].length - 1; x++) {
@@ -202,9 +206,7 @@ export class Game {
         }
         
         this.player = new Player(startX, startY, 0);
-        
-        // 🔧 ИСПРАВЛЕНИЕ: сбрасываем рассудок при переходе
-        this.player.sanity = 100;
+        this.player.resetSanity(); // Сброс рассудка
         
         // Создаём движок
         this.engine = new RNAEngine(
@@ -216,14 +218,6 @@ export class Game {
         
         // Обновляем индикатор рассудка
         this.updateSanityUI();
-        
-        // Находим выход на карте
-        const exit = this.map.getExit();
-        if (exit) {
-            // Сохраняем позицию выхода для проверки
-            this.exitX = exit.x;
-            this.exitY = exit.y;
-        }
         
         setTimeout(() => this.hideLoading(), 300);
     }
@@ -253,31 +247,36 @@ export class Game {
         const rotSpeed = 3.0 * (1 / 60);
         
         let dx = 0, dy = 0;
+        this.isMoving = false;
+        
         if (this.keys['w'] || this.keys['W'] || this.keys['ArrowUp']) {
             dx += Math.cos(this.player.angle) * speed;
             dy += Math.sin(this.player.angle) * speed;
+            this.isMoving = true;
         }
         if (this.keys['s'] || this.keys['S'] || this.keys['ArrowDown']) {
             dx -= Math.cos(this.player.angle) * speed;
             dy -= Math.sin(this.player.angle) * speed;
+            this.isMoving = true;
         }
         if (this.keys['a'] || this.keys['A']) {
             dx += Math.cos(this.player.angle - Math.PI/2) * speed;
             dy += Math.sin(this.player.angle - Math.PI/2) * speed;
+            this.isMoving = true;
         }
         if (this.keys['d'] || this.keys['D']) {
             dx += Math.cos(this.player.angle + Math.PI/2) * speed;
             dy += Math.sin(this.player.angle + Math.PI/2) * speed;
+            this.isMoving = true;
         }
         
-        // 🔧 ИСПРАВЛЕНИЕ: проверка границ карты
-        const mapData = this.map.getData();
+        // 🔧 ИСПРАВЛЕНИЕ 4: проверка границ через clampPosition
+        const mapData = this.map.getMap();
         const newX = this.player.x + dx;
         const newY = this.player.y + dy;
         const mapSize = mapData.length;
         
         if (newX >= 0 && newX < mapSize && newY >= 0 && newY < mapSize) {
-            // Проверка столкновений
             const cellX = Math.floor(newX);
             const cellY = Math.floor(newY);
             if (cellY >= 0 && cellY < mapData.length && 
@@ -287,6 +286,9 @@ export class Game {
                 this.player.y = newY;
             }
         }
+        
+        // Применяем clampPosition для страховки
+        this.player.clampPosition(mapSize);
         
         // Поворот (клавиши)
         const rotSpeedKey = 2.5 * (1 / 60);
@@ -314,8 +316,16 @@ export class Game {
     }
     
     render() {
-        if (!this.engine) return;
-        this.engine.render();
+        if (!this.engine || !this.map || !this.player) return;
+        
+        // 🔧 ИСПРАВЛЕНИЕ 3: render с аргументами
+        const levelDef = LEVELS[this.currentLevel] || LEVELS[0];
+        this.engine.render(
+            this.map,
+            this.player,
+            levelDef,
+            this.isMoving
+        );
     }
     
     // ===== ИНТЕРФЕЙС =====
@@ -325,7 +335,6 @@ export class Game {
             const sanity = Math.max(0, Math.min(100, this.player.sanity));
             fill.style.width = sanity + '%';
             
-            // Меняем цвет
             if (sanity > 60) {
                 fill.style.background = '#4CAF50';
             } else if (sanity > 30) {
@@ -340,7 +349,8 @@ export class Game {
     checkExit() {
         if (!this.player || !this.map) return;
         
-        const exit = this.map.getExit();
+        // 🔧 ИСПРАВЛЕНИЕ 2: getExitPoint вместо getExit
+        const exit = this.map.getExitPoint();
         if (!exit) return;
         
         const dist = Math.sqrt(
@@ -348,7 +358,6 @@ export class Game {
             Math.pow(this.player.y - exit.y, 2)
         );
         
-        // Если игрок коснулся выхода (зелёная точка)
         if (dist < 0.8) {
             this.nextLevel();
         }
@@ -359,11 +368,9 @@ export class Game {
         const nextIndex = this.currentLevel + 1;
         if (nextIndex < LEVELS.length) {
             this.showLoading();
-            // 🔧 ИСПРАВЛЕНИЕ: сброс рассудка при переходе
             this.loadLevel(nextIndex);
             setTimeout(() => this.hideLoading(), 400);
         } else {
-            // Все уровни пройдены
             alert('Поздравляем! Вы прошли все уровни!');
         }
     }
