@@ -291,11 +291,52 @@ export class Game {
         document.addEventListener('keydown', restart);
     }
     
-    // ✅ ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ РЕНДЕРА
     render() {
         if (!this.engine || !this.map || !this.player) return;
         const levelDef = LEVELS[this.currentLevel] || LEVELS[0];
         this.engine.render(this.map, this.player, levelDef, this.isMoving);
+        this._drawMinimap();
+    }
+
+    _drawMinimap() {
+        const ctx = this.canvas.getContext('2d');
+        const W = this.canvas.width, H = this.canvas.height;
+        const scale = 3;
+        const ox = W - this.mapSize * scale - 10;
+        const oy = 10;
+
+        ctx.globalAlpha = 0.5;
+        for (let y = 0; y < this.mapSize; y++) {
+            for (let x = 0; x < this.mapSize; x++) {
+                ctx.fillStyle = this.map.getCell(x, y) === 0 ? '#443300' : '#000000';
+                ctx.fillRect(ox + x * scale, oy + y * scale, scale, scale);
+            }
+        }
+
+        // Монстры
+        if (this.monsters) {
+            ctx.fillStyle = '#ff2222';
+            for (const m of this.monsters) {
+                if (m.alive) ctx.fillRect(ox + m.x * scale - 1, oy + m.y * scale - 1, 3, 3);
+            }
+        }
+
+        // Игрок
+        ctx.fillStyle = '#ffcc00';
+        ctx.fillRect(ox + this.player.x * scale - 2, oy + this.player.y * scale - 2, 4, 4);
+
+        // Направление взгляда
+        ctx.strokeStyle = '#ffcc00';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(ox + this.player.x * scale, oy + this.player.y * scale);
+        ctx.lineTo(
+            ox + (this.player.x + Math.cos(this.player.angle) * 3) * scale,
+            oy + (this.player.y + Math.sin(this.player.angle) * 3) * scale
+        );
+        ctx.stroke();
+
+        ctx.globalAlpha = 1;
     }
     
     updateSanityUI() {
