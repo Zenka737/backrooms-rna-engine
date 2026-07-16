@@ -48,6 +48,10 @@ export const LEVELS = [
 
     entities: [],
     nextLevel: 1,
+    monsterCount: 0,
+    lightInterval: 5,     // лампа каждые 5 клеток
+    lightColor: [220, 200, 120], // тёплый жёлтый
+    lightRadius: 6,
   },
 
   {
@@ -81,6 +85,10 @@ export const LEVELS = [
 
     entities: [],
     nextLevel: 2,
+    monsterCount: 1,
+    lightInterval: 7,
+    lightColor: [160, 180, 220], // холодный синеватый
+    lightRadius: 5,
   },
 
   {
@@ -113,7 +121,11 @@ export const LEVELS = [
     },
 
     entities: [],
-    nextLevel: 0, // loops back
+    nextLevel: 0,
+    monsterCount: 3,
+    lightInterval: 10,    // редкие лампы
+    lightColor: [80, 100, 80],  // зеленоватый
+    lightRadius: 4,
   },
 ];
 

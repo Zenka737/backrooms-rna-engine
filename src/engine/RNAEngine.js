@@ -78,6 +78,7 @@ export class RNAEngine {
     this._drawFloorCeiling(level, W, H, horizonShift);
     const zbuffer = this._raycastWalls(map, player, level, W, H, horizonShift);
     if (level.entities) this._drawSprites(map, player, level, zbuffer, W, H, horizonShift);
+    if (level.lights) this._drawCeilingLights(level.lights, level, player, W, H, horizonShift);
 
     ctx.restore();
 
@@ -340,5 +341,64 @@ export class RNAEngine {
     ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy);
     ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8);
     ctx.stroke();
+
+    // Hearts
+    if (player.hearts !== undefined) {
+      ctx.font = '22px serif';
+      for (let i = 0; i < player.maxHearts; i++) {
+        const filled = i < player.hearts;
+        // Мигание при неуязвимости
+        if (!filled || (player.invincible > 0 && Math.floor(player.invincible / 8) % 2 === 0)) {
+          ctx.fillStyle = 'rgba(60,10,10,0.6)';
+        } else {
+          ctx.fillStyle = `rgba(220,40,40,${0.9 * fi})`;
+        }
+        ctx.fillText('♥', 10 + i * 26, H - 12);
+      }
+    }
+  }
+
+  // Проекция потолочных ламп в мировом пространстве
+  _drawCeilingLights(lights, level, player, W, H, horizonShift) {
+    const ctx = this.ctx;
+    const mid = H / 2 + horizonShift;
+    const cos = Math.cos(player.angle);
+    const sin = Math.sin(player.angle);
+    const [lr, lg, lb] = level.lightColor || [220, 200, 120];
+    const flicker = this.flickerIntensity;
+
+    for (const light of lights) {
+      const rdx = light.x - player.x;
+      const rdy = light.y - player.y;
+
+      // Трансформация в пространство камеры
+      const camZ = rdx * cos + rdy * sin;
+      const camX = -rdx * sin + rdy * cos;
+
+      if (camZ <= 0.1) continue;
+
+      const screenX = Math.floor(W / 2 * (1 + camX / camZ));
+      // Y позиция лампы на потолке (потолок выше горизонта)
+      const screenY = Math.floor(mid - (H * 0.5) / camZ);
+
+      if (screenX < -50 || screenX > W + 50 || screenY > mid) continue;
+
+      const size = Math.min(80, Math.max(4, W * 0.06 / camZ));
+      const alpha = Math.max(0, Math.min(0.85, 1.2 / camZ)) * flicker;
+
+      // Светящееся пятно на потолке
+      const grd = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, size * 2.5);
+      grd.addColorStop(0,   `rgba(${lr},${lg},${lb},${alpha})`);
+      grd.addColorStop(0.3, `rgba(${lr},${lg},${lb},${alpha * 0.5})`);
+      grd.addColorStop(1,   `rgba(${lr},${lg},${lb},0)`);
+      ctx.fillStyle = grd;
+      ctx.fillRect(screenX - size * 2.5, screenY - size * 2.5, size * 5, size * 5);
+
+      // Яркое ядро лампы
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(0.9, alpha * 1.5)})`;
+      ctx.beginPath();
+      ctx.ellipse(screenX, screenY, Math.max(1, size * 0.4), Math.max(1, size * 0.15), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }
