@@ -6,8 +6,9 @@ export class Player {
     this.speed = 0.04;
     this.rotSpeed = 0.035;
     this.sanity = 100;
-    this.sanityDrainRate = 0.003;
+    this.sanityDrainRate = 0.002;
     this.radius = 0.25;
+    this.isMoving = false;
   }
 
   update(input, map, dt = 1) {
@@ -21,19 +22,19 @@ export class Player {
     if (input.strafeL)  { dx += sin * spd; dy -= cos * spd; }
     if (input.strafeR)  { dx -= sin * spd; dy += cos * spd; }
 
+    this.isMoving = (dx !== 0 || dy !== 0);
+
     this._move(dx, 0, map);
     this._move(0, dy, map);
 
     if (input.left)  this.angle -= this.rotSpeed * dt;
     if (input.right) this.angle += this.rotSpeed * dt;
 
-    // Pointer lock mouse look
     if (input.mouseDx) {
       this.angle += input.mouseDx * 0.002;
       input.mouseDx = 0;
     }
 
-    // Sanity drain
     this.sanity = Math.max(0, this.sanity - this.sanityDrainRate * dt);
   }
 
@@ -41,17 +42,12 @@ export class Player {
     const nx = this.x + dx;
     const ny = this.y + dy;
     const r = this.radius;
-    // Check corners
     const clear = (x, y) => map.getCell(Math.floor(x), Math.floor(y)) === 0;
-    if (clear(nx - r, this.y) && clear(nx + r, this.y) &&
-        clear(nx - r, this.y + r) && clear(nx + r, this.y + r) &&
-        clear(nx - r, this.y - r) && clear(nx + r, this.y - r)) {
-      this.x = nx;
-    }
-    if (clear(this.x, ny - r) && clear(this.x, ny + r) &&
-        clear(this.x + r, ny - r) && clear(this.x + r, ny + r) &&
-        clear(this.x - r, ny - r) && clear(this.x - r, ny + r)) {
-      this.y = ny;
-    }
+    if (clear(nx-r, this.y) && clear(nx+r, this.y) &&
+        clear(nx-r, this.y+r) && clear(nx+r, this.y+r) &&
+        clear(nx-r, this.y-r) && clear(nx+r, this.y-r)) this.x = nx;
+    if (clear(this.x, ny-r) && clear(this.x, ny+r) &&
+        clear(this.x+r, ny-r) && clear(this.x+r, ny+r) &&
+        clear(this.x-r, ny-r) && clear(this.x-r, ny+r)) this.y = ny;
   }
 }
