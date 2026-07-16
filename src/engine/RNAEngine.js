@@ -51,8 +51,8 @@ export class RNAEngine {
     const nctx = nc.getContext('2d');
     const img = nctx.createImageData(256, 256);
     for (let i = 0; i < img.data.length; i += 4) {
-      const v = Math.random() * 35 | 0;
-      img.data[i] = v; img.data[i+1] = v; img.data[i+2] = v; img.data[i+3] = 28;
+      const v = Math.random() * 18 | 0;
+      img.data[i] = v; img.data[i+1] = v; img.data[i+2] = v; img.data[i+3] = 12;
     }
     nctx.putImageData(img, 0, 0);
     return nc;
@@ -210,8 +210,8 @@ export class RNAEngine {
   _getShade(dist, side, level) {
     const maxDist = level.fogDistance || 12;
     let shade = 1 - Math.min(1, dist / maxDist);
-    if (side === 1) shade *= 0.65;
-    return Math.max(0.03, shade);
+    if (side === 1) shade *= 0.72;
+    return Math.max(0.08, shade);
   }
 
   _drawSprites(map, player, level, zbuffer, W, H, horizonShift) {
